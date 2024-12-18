@@ -3,10 +3,9 @@ import { Env, User, Config } from '../types'
 import { configPath } from '../constants'
 
 export function getBaseURL(env: Env): string {
-  return 'http://localhost:4000'
-  // if (env === 'local') return 'http://localhost:4000'
-  // if (env === 'dev') return 'https://develop.penx.io'
-  // return 'https://penx.io'
+  if (env === 'local') return 'http://localhost:4000'
+  if (env === 'dev') return 'https://develop.penx.io'
+  return 'https://penx.io'
 }
 
 export function sleep(ms: number) {

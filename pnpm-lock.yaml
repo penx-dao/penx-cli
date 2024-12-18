@@ -110,9 +110,6 @@ dependencies:
   inquirer:
     specifier: ^8.2.4
     version: 8.2.6
-  ky:
-    specifier: ^1.7.3
-    version: 1.7.3
   nanoid:
     specifier: ^3.3.4
     version: 3.3.8
@@ -4632,11 +4629,6 @@ packages:
 
   /kolorist@1.8.0:
     resolution: {integrity: sha512-Y+60/zizpJ3HRH8DCss+q95yr6145JXZo46OTpFvDZWLfRCE4qChOyk1b26nMaNpfHHgxagk9dXT5OP0Tfe+dQ==}
-    dev: false
-
-  /ky@1.7.3:
-    resolution: {integrity: sha512-Sz49ZWR/BjNOq+2UK1k9ONZUVq8eyuCj30Zgc8VrRNtFlTBZduzuvehUd5kjQF6/Fms3Ir3EYqzJryw9tRvsSw==}
-    engines: {node: '>=18'}
     dev: false
 
   /levn@0.4.1:

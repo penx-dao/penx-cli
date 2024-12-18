@@ -8,10 +8,9 @@ import fs from 'fs'
 import { getTRPC } from '../lib/trpc'
 import { getManifest } from '../lib/getManifest'
 import { iconToString } from '../lib/iconToString'
-import { assetsToStringMap } from '../lib/assetsToStringMap'
 import { isIconify, readConfig } from '../lib/utils'
 import { getReadme } from '../lib/getReadme'
-import { escAction } from '../constants'
+import { calculateSHA256FromBuffer } from '../lib/calculateSHA256FromBuffer'
 
 type Args = {
   action: 'init' | 'install' | 'publish'
@@ -84,6 +83,11 @@ class Command {
       await this.install(args.themeName)
       return
     }
+
+    if (args.action === 'init') {
+      await this.init()
+      return
+    }
   }
 
   async publish() {
@@ -93,6 +97,7 @@ class Command {
     const spinner = ora('Upload the theme files...').start()
     try {
       const manifest = await getManifest()
+
       if (!manifest?.name) {
         spinner.fail(`Theme name is required in your manifest.json`)
         return
@@ -103,7 +108,7 @@ class Command {
       })
 
       if (!canPublish) {
-        spinner.fail()
+        spinner.fail('Theme name already exists. Please choose a different name.')
         return
       }
 
@@ -114,11 +119,24 @@ class Command {
       const screenshotsDir = join(process.cwd(), 'screenshots')
       const screenshotsPaths = jetpack.list(screenshotsDir) || []
 
+      const screenshotUrls: string[] = []
+      for (const path of screenshotsPaths) {
+        const buffer = fs.readFileSync(join(process.cwd(), 'screenshots', path))
+        const fileHash = await calculateSHA256FromBuffer(buffer)
+        const STATIC_URL = 'https://static.penx.me'
+        const res: any = await fetch(`${STATIC_URL}/themes/screenshots/${fileHash}`, {
+          method: 'PUT',
+          body: buffer,
+        }).then((r) => r.json())
+
+        screenshotUrls.push(res.key)
+      }
+
       await this.trpc.theme.upsertTheme.mutate({
         name: manifest.name,
         manifest: JSON.stringify({
           ...manifest,
-          screenshots: screenshotsPaths,
+          screenshots: screenshotUrls,
         }),
         readme,
         logo: isIconify(manifest.icon)
@@ -128,8 +146,8 @@ class Command {
 
       spinner.succeed('Publish success!')
     } catch (error) {
-      spinner.fail('Publish failed, please try again!')
       console.log(error)
+      spinner.fail('Publish failed, please try again!')
     }
   }
 
@@ -155,9 +173,10 @@ class Command {
       }
 
       const results = await Promise.all(promises)
+      const themesDir = this.getThemesDir()
 
       files.forEach((file, index) => {
-        const pathname = join(process.cwd(), 'src', 'themes', themeName, file)
+        const pathname = join(themesDir, themeName, file)
 
         const text = results[index]
         jetpack.write(pathname, text)
@@ -170,11 +189,44 @@ class Command {
   }
 
   async init() {
-    // TODO:
+    const themesDir = join(process.cwd(), 'themes')
+
+    if (!fs.existsSync(themesDir)) {
+      return console.log(chalk.yellow('Should initialize a new theme in PenX root directory.'))
+    }
+
+    jetpack.copy(join(themesDir, 'minimal'), join(themesDir, 'my-theme'), { overwrite: true })
+    jetpack.write(
+      join(themesDir, 'my-theme', 'manifest.json'),
+      JSON.stringify(
+        {
+          name: 'my-theme',
+          title: 'My Theme',
+          author: '',
+          description: '',
+          screenshots: [],
+        },
+        null,
+        2,
+      ),
+    )
+    console.log(chalk(`Initialize theme "${chalk.green('my-theme')}" success!`))
+    console.log(chalk(`Theme directory should be located in "${chalk.green('/themes/my-theme')}"`))
+    console.log(chalk('Now you can start developing your theme:'))
+    console.log(
+      chalk(
+        `Restart local server, and update theme in: ${chalk.green(
+          'http://localhost:3000/~/settings/appearance',
+        )}`,
+      ),
+    )
   }
 
-  getInstallDir() {
-    //
+  getThemesDir() {
+    if (process.cwd().endsWith('themes')) {
+      return process.cwd()
+    }
+    return join(process.cwd(), 'themes')
   }
 
   getReadmeContent(extensionName: string) {
