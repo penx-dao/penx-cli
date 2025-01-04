@@ -1,5 +1,4 @@
 import React from 'react'
-import chalk from 'chalk'
 import yargs, { ArgumentsCamelCase } from 'yargs'
 import { render } from 'ink'
 import { nanoid } from 'nanoid'
